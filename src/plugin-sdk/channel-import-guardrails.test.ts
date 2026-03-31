@@ -121,6 +121,7 @@ const LOCAL_EXTENSION_API_BARREL_GUARDS = [
   "feishu",
   "google",
   "irc",
+  "llm-insights",
   "llm-task",
   "line",
   "lobster",

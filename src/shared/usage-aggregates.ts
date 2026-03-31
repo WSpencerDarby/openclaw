@@ -1,10 +1,45 @@
-type LatencyTotalsLike = {
+/** Rolling merge target for `mergeUsageLatency` (sessions or per-model). */
+export type MergedLatencyTotals = {
   count: number;
   sum: number;
   min: number;
   max: number;
   p95Max: number;
 };
+
+export function emptyMergedLatencyTotals(): MergedLatencyTotals {
+  return {
+    count: 0,
+    sum: 0,
+    min: Number.POSITIVE_INFINITY,
+    max: 0,
+    p95Max: 0,
+  };
+}
+
+/** Converts merged totals into the same shape as per-session `SessionLatencyStats`. */
+export function mergedLatencyTotalsToStats(totals: MergedLatencyTotals):
+  | {
+      count: number;
+      avgMs: number;
+      minMs: number;
+      maxMs: number;
+      p95Ms: number;
+    }
+  | undefined {
+  if (totals.count <= 0) {
+    return undefined;
+  }
+  return {
+    count: totals.count,
+    avgMs: totals.sum / totals.count,
+    minMs: totals.min === Number.POSITIVE_INFINITY ? 0 : totals.min,
+    maxMs: totals.max,
+    p95Ms: totals.p95Max,
+  };
+}
+
+type LatencyTotalsLike = MergedLatencyTotals;
 
 type DailyLatencyLike = {
   date: string;
@@ -80,17 +115,7 @@ export function buildUsageAggregateTail<
     byChannel: Array.from(params.byChannelMap.entries())
       .map(([channel, totals]) => ({ channel, totals }))
       .toSorted((a, b) => b.totals.totalCost - a.totals.totalCost),
-    latency:
-      params.latencyTotals.count > 0
-        ? {
-            count: params.latencyTotals.count,
-            avgMs: params.latencyTotals.sum / params.latencyTotals.count,
-            minMs:
-              params.latencyTotals.min === Number.POSITIVE_INFINITY ? 0 : params.latencyTotals.min,
-            maxMs: params.latencyTotals.max,
-            p95Ms: params.latencyTotals.p95Max,
-          }
-        : undefined,
+    latency: mergedLatencyTotalsToStats(params.latencyTotals),
     dailyLatency: Array.from(params.dailyLatencyMap.values())
       .map((entry) => ({
         date: entry.date,

@@ -360,6 +360,13 @@ function gogCredentialsPaths(): string[] {
   if (xdg) {
     paths.push(path.join(xdg, "gogcli", "credentials.json"));
   }
+  // gogcli uses os.UserConfigDir()/gogcli (see steipete/gogcli internal/config/paths.go).
+  if (process.platform === "win32") {
+    const appData = process.env.APPDATA?.trim();
+    if (appData) {
+      paths.push(path.join(appData, "gogcli", "credentials.json"));
+    }
+  }
   paths.push(resolveUserPath("~/.config/gogcli/credentials.json"));
   if (process.platform === "darwin") {
     paths.push(resolveUserPath("~/Library/Application Support/gogcli/credentials.json"));

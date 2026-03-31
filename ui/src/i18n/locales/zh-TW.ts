@@ -86,6 +86,15 @@ export const zh_TW: TranslationMap = {
       lastChannelsRefresh: "最後頻道刷新",
       channelsHint: "使用頻道鏈接 WhatsApp、Telegram、Discord、Signal 或 iMessage。",
     },
+    llmInsights: {
+      accessBlockTitle: "LLM Insights",
+      accessBlockSub: "外掛報告頁面。在新分頁中開啟（僅當閘道要求時再填權杖）。",
+      link: "LLM Insights",
+      openButton: "開啟 LLM Insights",
+      linkTitle: "在新分頁開啟 LLM Insights（使用您的閘道權杖）。",
+      openFailed: "無法開啟 LLM Insights：{message}",
+      needsAuth: "請在上方新增閘道權杖或密碼，連線後即可開啟 LLM Insights。",
+    },
     stats: {
       instances: "實例",
       instancesHint: "過去 5 分鐘內的在線信號。",

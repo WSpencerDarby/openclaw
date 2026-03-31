@@ -82,13 +82,9 @@ export function createGatewayPluginRequestHandler(params: {
     if (matchedRoutes.length === 0) {
       return false;
     }
-    const requiresGatewayAuth = matchedPluginRoutesRequireGatewayAuth(matchedRoutes);
-    if (requiresGatewayAuth && dispatchContext?.gatewayAuthSatisfied === false) {
-      log.warn(`plugin http route blocked without gateway auth (${pathContext.canonicalPath})`);
-      return false;
-    }
+    const primaryRequiresGatewayAuth = matchedPluginRoutesRequireGatewayAuth(matchedRoutes);
     const runtimeClient = createPluginRouteRuntimeClient({
-      requiresGatewayAuth,
+      requiresGatewayAuth: primaryRequiresGatewayAuth,
       gatewayAuthSatisfied: dispatchContext?.gatewayAuthSatisfied,
     });
 
@@ -99,6 +95,9 @@ export function createGatewayPluginRequestHandler(params: {
       },
       async () => {
         for (const route of matchedRoutes) {
+          if (route.auth === "gateway" && dispatchContext?.gatewayAuthSatisfied === false) {
+            continue;
+          }
           try {
             const handled = await route.handler(req, res);
             if (handled !== false) {

@@ -201,6 +201,9 @@ describe("session cost usage", () => {
     expect(summary?.toolUsage?.tools[0]?.name).toBe("weather");
     expect(summary?.modelUsage?.[0]?.provider).toBe("openai");
     expect(summary?.modelUsage?.[0]?.model).toBe("gpt-5.4");
+    expect(summary?.modelUsage?.[0]?.latency?.count).toBe(1);
+    expect(summary?.modelUsage?.[0]?.latency?.avgMs).toBe(5 * 60 * 1000);
+    expect(summary?.modelUsage?.[0]?.latency?.p95Ms).toBe(5 * 60 * 1000);
     expect(summary?.durationMs).toBe(5 * 60 * 1000);
     expect(summary?.latency?.count).toBe(1);
     expect(summary?.latency?.avgMs).toBe(5 * 60 * 1000);
@@ -209,6 +212,71 @@ describe("session cost usage", () => {
     expect(summary?.dailyLatency?.[0]?.count).toBe(1);
     expect(summary?.dailyModelUsage?.[0]?.date).toBe("2026-02-01");
     expect(summary?.dailyModelUsage?.[0]?.model).toBe("gpt-5.4");
+  });
+
+  it("attributes latency separately per model", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-cost-per-model-latency-"));
+    const sessionFile = path.join(root, "session.jsonl");
+    const t0 = new Date("2026-02-01T10:00:00.000Z");
+    const t1 = new Date("2026-02-01T10:01:00.000Z");
+    const t2 = new Date("2026-02-01T10:02:00.000Z");
+    const t3 = new Date("2026-02-01T10:05:00.000Z");
+
+    const entries = [
+      {
+        type: "message",
+        timestamp: t0.toISOString(),
+        message: { role: "user", content: "u1" },
+      },
+      {
+        type: "message",
+        timestamp: t1.toISOString(),
+        message: {
+          role: "assistant",
+          provider: "openai",
+          model: "gpt-5.4",
+          usage: {
+            input: 1,
+            output: 1,
+            totalTokens: 2,
+            cost: { total: 0.001 },
+          },
+        },
+      },
+      {
+        type: "message",
+        timestamp: t2.toISOString(),
+        message: { role: "user", content: "u2" },
+      },
+      {
+        type: "message",
+        timestamp: t3.toISOString(),
+        message: {
+          role: "assistant",
+          provider: "openai",
+          model: "gpt-5.4-mini",
+          usage: {
+            input: 1,
+            output: 1,
+            totalTokens: 2,
+            cost: { total: 0.001 },
+          },
+        },
+      },
+    ];
+
+    await fs.writeFile(
+      sessionFile,
+      entries.map((entry) => JSON.stringify(entry)).join("\n"),
+      "utf-8",
+    );
+
+    const summary = await loadSessionCostSummary({ sessionFile });
+    const a = summary?.modelUsage?.find((m) => m.model === "gpt-5.4");
+    const b = summary?.modelUsage?.find((m) => m.model === "gpt-5.4-mini");
+    expect(a?.latency?.avgMs).toBe(60_000);
+    expect(b?.latency?.avgMs).toBe(180_000);
+    expect(summary?.latency?.avgMs).toBe(120_000);
   });
 
   it("does not exclude sessions with mtime after endMs during discovery", async () => {

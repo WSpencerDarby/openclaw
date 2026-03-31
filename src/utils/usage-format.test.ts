@@ -9,6 +9,7 @@ import {
 } from "../gateway/model-pricing-cache.js";
 import {
   __resetUsageFormatCachesForTest,
+  estimateCostBreakdownFromUsageAndPricing,
   estimateUsageCost,
   formatTokenCount,
   formatUsd,
@@ -87,6 +88,56 @@ describe("usage-format", () => {
     });
 
     expect(total).toBeCloseTo(0.003);
+  });
+
+  it("breaks down estimated cost by component from usage and pricing", () => {
+    const cost = { input: 1, output: 2, cacheRead: 0, cacheWrite: 0 };
+    const breakdown = estimateCostBreakdownFromUsageAndPricing({
+      usage: { input: 1_000_000, output: 500_000, cacheRead: 0, cacheWrite: 0 },
+      cost,
+    });
+    expect(breakdown.inputCost).toBeCloseTo(1);
+    expect(breakdown.outputCost).toBeCloseTo(1);
+    expect(breakdown.totalCost).toBeCloseTo(2);
+  });
+
+  it("prefers models.usageCostOverrides over provider catalog", () => {
+    const config = {
+      models: {
+        providers: {
+          test: {
+            baseUrl: "http://127.0.0.1:1",
+            models: [
+              {
+                id: "m1",
+                name: "m1",
+                reasoning: false,
+                input: ["text"],
+                cost: { input: 1, output: 2, cacheRead: 0, cacheWrite: 0 },
+                contextWindow: 8192,
+                maxTokens: 4096,
+              },
+            ],
+          },
+        },
+        usageCostOverrides: {
+          "test/m1": { input: 0.5, output: 0.5, cacheRead: 0, cacheWrite: 0 },
+        },
+      },
+    } as unknown as OpenClawConfig;
+
+    const cost = resolveModelCostConfig({
+      provider: "test",
+      model: "m1",
+      config,
+    });
+
+    expect(cost).toEqual({
+      input: 0.5,
+      output: 0.5,
+      cacheRead: 0,
+      cacheWrite: 0,
+    });
   });
 
   it("returns undefined when model pricing is not configured", () => {

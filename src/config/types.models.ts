@@ -82,8 +82,24 @@ export type BedrockDiscoveryConfig = {
   defaultMaxTokens?: number;
 };
 
+/**
+ * USD per **million** tokens (same units as provider model definitions and gateway pricing cache).
+ * Keys are normalized `provider/model` strings (see `modelKey` / `resolveModelCostConfig`).
+ */
+export type UsageCostOverrideEntry = {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+};
+
 export type ModelsConfig = {
   mode?: "merge" | "replace";
   providers?: Record<string, ModelProviderConfig>;
   bedrockDiscovery?: BedrockDiscoveryConfig;
+  /**
+   * Manual usage pricing overrides (highest priority over `~/.openclaw/agents/<id>/models.json`,
+   * `models.providers.*.models[].cost`, and the gateway model-pricing cache).
+   */
+  usageCostOverrides?: Record<string, UsageCostOverrideEntry>;
 };

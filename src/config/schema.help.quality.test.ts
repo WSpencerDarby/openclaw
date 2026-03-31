@@ -372,6 +372,7 @@ const TARGET_KEYS = [
   "models.bedrockDiscovery.refreshInterval",
   "models.bedrockDiscovery.defaultContextWindow",
   "models.bedrockDiscovery.defaultMaxTokens",
+  "models.usageCostOverrides",
   "agents",
   "agents.defaults",
   "agents.list",

@@ -72,6 +72,39 @@ describe("exec approvals shell analysis", () => {
       expect(res.command).not.toContain("'env'");
     });
 
+    it("builds PowerShell call-style enforced command on win32 (single segment)", () => {
+      const analysis = analyzeArgvCommand({
+        argv: [String.raw`C:\Tools\gog.exe`, "gmail", "search", "is:unread", "--max", "10", "--json"],
+        cwd: "C:\\work",
+        env: {},
+      });
+      expect(analysis.ok).toBe(true);
+      const res = buildEnforcedShellCommand({
+        command: String.raw`C:\Tools\gog.exe gmail search is:unread --max 10 --json`,
+        segments: analysis.segments,
+        platform: "win32",
+      });
+      expect(res.ok).toBe(true);
+      expect(res.command).toMatch(/^& /);
+      expect(res.command).toContain("gog.exe");
+      expect(res.command).toContain("'--json'");
+    });
+
+    it("fails closed on win32 when more than one segment is provided", () => {
+      const analysis = analyzeArgvCommand({
+        argv: ["echo", "a"],
+        cwd: "/tmp",
+        env: {},
+      });
+      expect(analysis.ok).toBe(true);
+      const res = buildEnforcedShellCommand({
+        command: "echo a",
+        segments: [...analysis.segments, ...analysis.segments],
+        platform: "win32",
+      });
+      expect(res).toEqual({ ok: false, reason: "unsupported platform" });
+    });
+
     it("keeps shell multiplexer rebuilds as coherent execution argv", () => {
       if (process.platform === "win32") {
         return;

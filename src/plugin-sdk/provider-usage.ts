@@ -3,8 +3,11 @@
 export type {
   ProviderUsageSnapshot,
   UsageProviderId,
+  UsageSummary,
   UsageWindow,
 } from "../infra/provider-usage.types.js";
+
+export { loadProviderUsageSummary } from "../infra/provider-usage.load.js";
 
 export {
   fetchClaudeUsage,

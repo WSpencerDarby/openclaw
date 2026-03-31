@@ -365,6 +365,25 @@ describe("buildAgentSystemPrompt", () => {
     expect(prompt).toContain("Reminder: commit your changes in this workspace after edits.");
   });
 
+  it("includes Windows PowerShell exec guidance when runtime os looks like Windows", () => {
+    const prompt = buildAgentSystemPrompt({
+      workspaceDir: "/tmp/openclaw",
+      toolNames: ["exec"],
+      runtimeInfo: { os: "Windows_NT 10.0.26100", shell: "pwsh" },
+    });
+    expect(prompt).toContain("Windows / PowerShell exec");
+    expect(prompt).toContain("Do not put bash-style");
+  });
+
+  it("omits Windows PowerShell exec guidance on non-Windows os", () => {
+    const prompt = buildAgentSystemPrompt({
+      workspaceDir: "/tmp/openclaw",
+      toolNames: ["exec"],
+      runtimeInfo: { os: "Darwin 24.0.0" },
+    });
+    expect(prompt).not.toContain("Windows / PowerShell exec");
+  });
+
   it("shows timezone section for 12h, 24h, and timezone-only modes", () => {
     const cases = [
       {

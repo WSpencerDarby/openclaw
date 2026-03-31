@@ -119,6 +119,8 @@ export type SessionModelUsage = {
   model?: string;
   count: number;
   totals: CostUsageTotals;
+  /** Response-time stats for assistant turns attributed to this model (same window as global latency). */
+  latency?: SessionLatencyStats;
 };
 
 export type SessionCostSummary = CostUsageTotals & {

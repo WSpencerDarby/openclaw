@@ -581,6 +581,7 @@ export async function loadSessionCostSummary(params: {
   };
   const toolUsageMap = new Map<string, number>();
   const modelUsageMap = new Map<string, SessionModelUsage>();
+  const modelLatencySamples = new Map<string, number[]>();
   const errorStopReasons = new Set(["error", "aborted", "timeout"]);
   const latencyValues: number[] = [];
   let lastUserTimestamp: number | undefined;
@@ -630,6 +631,12 @@ export async function loadSessionCostSummary(params: {
             latencyMs <= MAX_LATENCY_MS
           ) {
             latencyValues.push(latencyMs);
+            if (entry.provider || entry.model) {
+              const modelKey = `${entry.provider ?? "unknown"}::${entry.model ?? "unknown"}`;
+              const forModel = modelLatencySamples.get(modelKey) ?? [];
+              forModel.push(latencyMs);
+              modelLatencySamples.set(modelKey, forModel);
+            }
             const dayKey = formatDayKey(entry.timestamp ?? new Date(ts));
             const dailyLatencies = dailyLatencyMap.get(dayKey) ?? [];
             dailyLatencies.push(latencyMs);
@@ -790,13 +797,19 @@ export async function loadSessionCostSummary(params: {
     : undefined;
 
   const modelUsage = modelUsageMap.size
-    ? Array.from(modelUsageMap.values()).toSorted((a, b) => {
-        const costDiff = (b.totals?.totalCost ?? 0) - (a.totals?.totalCost ?? 0);
-        if (costDiff !== 0) {
-          return costDiff;
-        }
-        return (b.totals?.totalTokens ?? 0) - (a.totals?.totalTokens ?? 0);
-      })
+    ? Array.from(modelUsageMap.values())
+        .map((row) => {
+          const key = `${row.provider ?? "unknown"}::${row.model ?? "unknown"}`;
+          const perModelLatency = computeLatencyStats(modelLatencySamples.get(key) ?? []);
+          return perModelLatency ? { ...row, latency: perModelLatency } : row;
+        })
+        .toSorted((a, b) => {
+          const costDiff = (b.totals?.totalCost ?? 0) - (a.totals?.totalCost ?? 0);
+          if (costDiff !== 0) {
+            return costDiff;
+          }
+          return (b.totals?.totalTokens ?? 0) - (a.totals?.totalTokens ?? 0);
+        })
     : undefined;
 
   return {

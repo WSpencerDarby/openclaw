@@ -262,12 +262,12 @@ describe("createGatewayPluginRequestHandler", () => {
     expect(second).toHaveBeenCalledTimes(1);
   });
 
-  it("fails closed when a matched gateway route reaches dispatch without auth", async () => {
+  it("skips gateway fallthrough routes when gateway auth is missing (primary plugin still runs)", async () => {
     const { handled, exactPluginHandler, prefixGatewayHandler } = await invokeSecureGatewayRoute({
       gatewayAuthSatisfied: false,
     });
     expect(handled).toBe(false);
-    expect(exactPluginHandler).not.toHaveBeenCalled();
+    expect(exactPluginHandler).toHaveBeenCalledTimes(1);
     expect(prefixGatewayHandler).not.toHaveBeenCalled();
   });
 
@@ -454,13 +454,13 @@ describe("plugin HTTP route auth checks", () => {
     expect(shouldEnforceGatewayAuthForPluginPath(registry, "/not-plugin")).toBe(false);
   });
 
-  it("enforces auth when any overlapping matched route requires gateway auth", () => {
+  it("uses the most specific matching route for gateway auth (ignores shorter prefix-only matches)", () => {
     const registry = createTestRegistry({
       httpRoutes: [
         createRoute({ path: "/plugin/secure/report", match: "exact", auth: "plugin" }),
         createRoute({ path: "/plugin/secure", match: "prefix", auth: "gateway" }),
       ],
     });
-    expect(shouldEnforceGatewayAuthForPluginPath(registry, "/plugin/secure/report")).toBe(true);
+    expect(shouldEnforceGatewayAuthForPluginPath(registry, "/plugin/secure/report")).toBe(false);
   });
 });

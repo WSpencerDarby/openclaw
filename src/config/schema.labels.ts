@@ -436,6 +436,7 @@ export const FIELD_LABELS: Record<string, string> = {
   "models.bedrockDiscovery.refreshInterval": "Bedrock Discovery Refresh Interval (s)",
   "models.bedrockDiscovery.defaultContextWindow": "Bedrock Default Context Window",
   "models.bedrockDiscovery.defaultMaxTokens": "Bedrock Default Max Tokens",
+  "models.usageCostOverrides": "Usage Cost Overrides (per model)",
   "auth.cooldowns.billingBackoffHours": "Billing Backoff (hours)",
   "auth.cooldowns.billingBackoffHoursByProvider": "Billing Backoff Overrides",
   "auth.cooldowns.billingMaxHours": "Billing Backoff Cap (hours)",

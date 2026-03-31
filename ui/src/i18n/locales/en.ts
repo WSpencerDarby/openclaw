@@ -87,6 +87,17 @@ export const en: TranslationMap = {
       lastChannelsRefresh: "Last Channels Refresh",
       channelsHint: "Use Channels to link WhatsApp, Telegram, Discord, Signal, or iMessage.",
     },
+    llmInsights: {
+      accessBlockTitle: "LLM Insights",
+      accessBlockSub:
+        "Plugin report page. Opens in a new tab (add a token above only if your gateway requires it).",
+      link: "LLM Insights",
+      openButton: "Open LLM Insights",
+      linkTitle: "Open LLM Insights in a new tab (uses your gateway token).",
+      openFailed: "Could not open LLM Insights: {message}",
+      needsAuth:
+        "If opening fails with unauthorized, add a gateway token or password above and try again.",
+    },
     stats: {
       instances: "Instances",
       instancesHint: "Presence beacons in the last 5 minutes.",

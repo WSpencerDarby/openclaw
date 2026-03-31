@@ -105,6 +105,7 @@ and the [Plugin SDK Overview](/plugins/sdk-overview).
 
   <Accordion title="Other">
     - `copilot-proxy` — VS Code Copilot Proxy bridge (disabled by default)
+    - `llm-insights` — model catalog and usage/cost/latency summaries ([LLM Insights](/plugins/llm-insights))
   </Accordion>
 </AccordionGroup>
 

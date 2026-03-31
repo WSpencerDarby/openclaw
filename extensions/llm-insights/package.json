@@ -1,0 +1,13 @@
+{
+  "name": "@openclaw/llm-insights",
+  "version": "2026.3.24",
+  "private": true,
+  "description": "OpenClaw LLM catalog and usage insights plugin",
+  "type": "module",
+  "dependencies": {
+    "@sinclair/typebox": "0.34.48"
+  },
+  "openclaw": {
+    "extensions": ["./index.ts"]
+  }
+}

@@ -86,6 +86,15 @@ export const zh_CN: TranslationMap = {
       lastChannelsRefresh: "最后频道刷新",
       channelsHint: "使用频道链接 WhatsApp、Telegram、Discord、Signal 或 iMessage。",
     },
+    llmInsights: {
+      accessBlockTitle: "LLM Insights",
+      accessBlockSub: "插件报告页面。在新标签页中打开（仅当网关要求时再填写令牌）。",
+      link: "LLM Insights",
+      openButton: "打开 LLM Insights",
+      linkTitle: "在新标签页打开 LLM Insights（使用您的网关令牌）。",
+      openFailed: "无法打开 LLM Insights：{message}",
+      needsAuth: "请在上方添加网关令牌或密码，连接后即可打开 LLM Insights。",
+    },
     stats: {
       instances: "实例",
       instancesHint: "过去 5 分钟内的在线信号。",

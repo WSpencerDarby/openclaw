@@ -22,6 +22,7 @@ import {
   shouldShowInsecureContextHint,
   shouldShowPairingHint,
 } from "./overview-hints.ts";
+import { renderOverviewLlmInsightsCard } from "./overview-llm-insights.ts";
 import { renderOverviewLogTail } from "./overview-log-tail.ts";
 
 export type OverviewProps = {
@@ -196,7 +197,7 @@ export function renderOverview(props: OverviewProps) {
 
   return html`
     <section class="grid">
-      <div class="card">
+      <div class="card" style="grid-column: 1 / -1;">
         <div class="card-title">${t("overview.access.title")}</div>
         <div class="card-sub">${t("overview.access.subtitle")}</div>
         <div class="ov-access-grid" style="margin-top: 16px;">
@@ -337,7 +338,8 @@ export function renderOverview(props: OverviewProps) {
         }
       </div>
 
-      <div class="card">
+      <div class="grid grid-cols-2" style="grid-column: 1 / -1;">
+        <div class="card" style=${!props.connected ? "grid-column: 1 / -1" : undefined}>
         <div class="card-title">${t("overview.snapshot.title")}</div>
         <div class="card-sub">${t("overview.snapshot.subtitle")}</div>
         <div class="stat-grid" style="margin-top: 16px;">
@@ -376,6 +378,13 @@ export function renderOverview(props: OverviewProps) {
                 </div>
               `
         }
+        </div>
+        ${renderOverviewLlmInsightsCard({
+          connected: props.connected,
+          settings: props.settings,
+          password: props.password,
+          authMode,
+        })}
       </div>
     </section>
 

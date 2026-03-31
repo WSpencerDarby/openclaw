@@ -273,11 +273,21 @@ export const BedrockDiscoverySchema = z
   .strict()
   .optional();
 
+export const UsageCostOverrideEntrySchema = z
+  .object({
+    input: z.number().finite(),
+    output: z.number().finite(),
+    cacheRead: z.number().finite(),
+    cacheWrite: z.number().finite(),
+  })
+  .strict();
+
 export const ModelsConfigSchema = z
   .object({
     mode: z.union([z.literal("merge"), z.literal("replace")]).optional(),
     providers: z.record(z.string(), ModelProviderSchema).optional(),
     bedrockDiscovery: BedrockDiscoverySchema,
+    usageCostOverrides: z.record(z.string(), UsageCostOverrideEntrySchema).optional(),
   })
   .strict()
   .optional();

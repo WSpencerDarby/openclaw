@@ -79,7 +79,8 @@ function resolveNpmArgvForWindows(argv: string[]): string[] | null {
 function resolveCommand(command: string): string {
   return resolveWindowsCommandShim({
     command,
-    cmdCommands: ["pnpm", "yarn"],
+    // gcloud is a `.cmd` shim on Windows (bare `gcloud` → ENOENT). gogcli publishes `gog.exe`; do not force `.cmd`.
+    cmdCommands: ["pnpm", "yarn", "gcloud"],
   });
 }
 
@@ -338,4 +339,28 @@ export async function runCommandWithTimeout(
       });
     });
   });
+}
+
+/**
+ * Resolve `argv` for `child_process.spawn` on Windows so `.cmd` shims (gcloud, pnpm, …)
+ * use the same cmd.exe wrapper as {@link runCommandWithTimeout}.
+ */
+export function resolveWindowsSpawnFileAndArgs(argv: string[]): { file: string; args: string[] } {
+  if (argv.length === 0) {
+    throw new Error("resolveWindowsSpawnFileAndArgs requires a non-empty argv");
+  }
+  if (process.platform !== "win32") {
+    return { file: argv[0] ?? "", args: argv.slice(1) };
+  }
+  const finalArgv = resolveNpmArgvForWindows(argv) ?? argv;
+  const resolvedCommand =
+    finalArgv !== argv ? (finalArgv[0] ?? "") : resolveCommand(argv[0] ?? "");
+  const useCmdWrapper = isWindowsBatchCommand(resolvedCommand);
+  if (useCmdWrapper) {
+    return {
+      file: process.env.ComSpec ?? "cmd.exe",
+      args: ["/d", "/s", "/c", buildCmdExeCommandLine(resolvedCommand, finalArgv.slice(1))],
+    };
+  }
+  return { file: resolvedCommand, args: finalArgv.slice(1) };
 }

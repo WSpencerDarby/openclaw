@@ -1068,6 +1068,7 @@
                   "tools/plugin",
                   "plugins/community",
                   "plugins/bundles",
+                  "plugins/llm-insights",
                   {
                     "group": "Building Plugins",
                     "pages": [

@@ -1474,6 +1474,44 @@ export const GENERATED_BUNDLED_PLUGIN_METADATA = [
     },
   },
   {
+    dirName: "llm-insights",
+    idHint: "llm-insights",
+    source: {
+      source: "./index.ts",
+      built: "index.js",
+    },
+    packageName: "@openclaw/llm-insights",
+    packageVersion: "2026.3.24",
+    packageDescription: "OpenClaw LLM catalog and usage insights plugin",
+    packageManifest: {
+      extensions: ["./index.ts"],
+    },
+    manifest: {
+      id: "llm-insights",
+      configSchema: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          defaultDays: {
+            type: "number",
+            minimum: 1,
+            maximum: 365,
+            description: "Default lookback window when the tool omits days/start/end.",
+          },
+          defaultLimit: {
+            type: "number",
+            minimum: 1,
+            maximum: 500,
+            description: "Default max sessions to scan for session aggregates.",
+          },
+        },
+      },
+      name: "LLM Insights",
+      description:
+        "Summarizes available models, local token/cost usage, provider quota windows, and assistant-turn latency from transcripts.",
+    },
+  },
+  {
     dirName: "llm-task",
     idHint: "llm-task",
     source: {

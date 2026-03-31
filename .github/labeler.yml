@@ -205,6 +205,10 @@
   - changed-files:
       - any-glob-to-any-file:
           - "extensions/llm-task/**"
+"extensions: llm-insights":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "extensions/llm-insights/**"
 "extensions: lobster":
   - changed-files:
       - any-glob-to-any-file:

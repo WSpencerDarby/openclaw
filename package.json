@@ -325,6 +325,14 @@
       "types": "./dist/plugin-sdk/feishu.d.ts",
       "default": "./dist/plugin-sdk/feishu.js"
     },
+    "./plugin-sdk/gateway-model-catalog": {
+      "types": "./dist/plugin-sdk/gateway-model-catalog.d.ts",
+      "default": "./dist/plugin-sdk/gateway-model-catalog.js"
+    },
+    "./plugin-sdk/gateway-usage-date-range": {
+      "types": "./dist/plugin-sdk/gateway-usage-date-range.d.ts",
+      "default": "./dist/plugin-sdk/gateway-usage-date-range.js"
+    },
     "./plugin-sdk/group-access": {
       "types": "./dist/plugin-sdk/group-access.d.ts",
       "default": "./dist/plugin-sdk/group-access.js"
@@ -393,6 +401,10 @@
       "types": "./dist/plugin-sdk/line-runtime.d.ts",
       "default": "./dist/plugin-sdk/line-runtime.js"
     },
+    "./plugin-sdk/llm-insights": {
+      "types": "./dist/plugin-sdk/llm-insights.d.ts",
+      "default": "./dist/plugin-sdk/llm-insights.js"
+    },
     "./plugin-sdk/llm-task": {
       "types": "./dist/plugin-sdk/llm-task.d.ts",
       "default": "./dist/plugin-sdk/llm-task.js"
@@ -412,6 +424,10 @@
     "./plugin-sdk/memory-lancedb": {
       "types": "./dist/plugin-sdk/memory-lancedb.d.ts",
       "default": "./dist/plugin-sdk/memory-lancedb.js"
+    },
+    "./plugin-sdk/model-cost": {
+      "types": "./dist/plugin-sdk/model-cost.d.ts",
+      "default": "./dist/plugin-sdk/model-cost.js"
     },
     "./plugin-sdk/msteams": {
       "types": "./dist/plugin-sdk/msteams.d.ts",
@@ -489,6 +505,10 @@
       "types": "./dist/plugin-sdk/secret-input.d.ts",
       "default": "./dist/plugin-sdk/secret-input.js"
     },
+    "./plugin-sdk/sessions-usage-report": {
+      "types": "./dist/plugin-sdk/sessions-usage-report.d.ts",
+      "default": "./dist/plugin-sdk/sessions-usage-report.js"
+    },
     "./plugin-sdk/signal": {
       "types": "./dist/plugin-sdk/signal.d.ts",
       "default": "./dist/plugin-sdk/signal.js"
@@ -544,6 +564,10 @@
     "./plugin-sdk/twitch": {
       "types": "./dist/plugin-sdk/twitch.d.ts",
       "default": "./dist/plugin-sdk/twitch.js"
+    },
+    "./plugin-sdk/usage-cost": {
+      "types": "./dist/plugin-sdk/usage-cost.d.ts",
+      "default": "./dist/plugin-sdk/usage-cost.js"
     },
     "./plugin-sdk/webhook-ingress": {
       "types": "./dist/plugin-sdk/webhook-ingress.d.ts",

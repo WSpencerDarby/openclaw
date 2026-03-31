@@ -35,7 +35,19 @@ function ensureSymlink(targetValue, targetPath, type) {
 }
 
 function symlinkPath(sourcePath, targetPath, type) {
-  ensureSymlink(relativeSymlinkTarget(sourcePath, targetPath), targetPath, type);
+  const targetValue = relativeSymlinkTarget(sourcePath, targetPath);
+  try {
+    ensureSymlink(targetValue, targetPath, type);
+  } catch (error) {
+    // Windows without Developer Mode/admin privileges often rejects file symlinks
+    // with EPERM. Fall back to a real file copy for runtime overlay artifacts.
+    if (process.platform === "win32" && error?.code === "EPERM" && fs.statSync(sourcePath).isFile()) {
+      removePathIfExists(targetPath);
+      fs.copyFileSync(sourcePath, targetPath);
+      return;
+    }
+    throw error;
+  }
 }
 
 function shouldWrapRuntimeJsFile(sourcePath) {

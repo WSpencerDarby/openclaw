@@ -10,6 +10,7 @@ Docs: https://docs.openclaw.ai
 
 ### Changes
 
+- Config/usage: add `models.usageCostOverrides` (manual per-model USD-per-million-token pricing, highest priority over catalog and `models.json`) and an LLM Insights page panel to edit and save overrides to the OpenClaw config file (POST `/plugins/llm-insights-cost-overrides` so it does not overlap the page prefix route).
 - MiniMax: add image generation provider for `image-01` model, supporting generate and image-to-image editing with aspect ratio control. (#54487) Thanks @liyuan97.
 - Slack/tool actions: add an explicit `upload-file` Slack action that routes file uploads through the existing Slack upload transport, with optional filename/title/comment overrides for channels and DMs.
 - Plugins/Matrix TTS: send auto-TTS replies as native Matrix voice bubbles instead of generic audio attachments. (#37080) thanks @Matthew19990919.
@@ -50,6 +51,9 @@ Docs: https://docs.openclaw.ai
 - Plugins/context engines: retry strict legacy `assemble()` calls without the new `prompt` field when older engines reject it, preserving prompt-aware retrieval compatibility for pre-prompt plugins. (#50848) thanks @danhdoan.
 - CLI/update status: explicitly say `up to date` when the local version already matches npm latest, while keeping the availability logic unchanged. (#51409) Thanks @dongzhenye.
 - Daemon/Linux: stop flagging non-gateway systemd services as duplicate gateways just because their unit files mention OpenClaw, reducing false-positive doctor/log noise. (#45328) Thanks @gregretkowski.
+- Sessions usage aggregates (`sessions.usage`, LLM Insights “Top models by usage”): recompute per-model and per-provider **Est. cost** from current token totals and resolved pricing (including `models.usageCostOverrides`) when a rate is available, so manual pricing edits update the table without relying on historical transcript costs alone.
+- LLM Insights: reload the page after saving cost overrides and read live config via `loadConfig()` so override fields and estimates reflect what was written (the plugin registration snapshot could stay stale).
+- LLM Insights: allow saving usage cost overrides from a direct loopback browser session without pasting the gateway Bearer token (remote access still requires `Authorization`), and only send `Authorization` when the token field is non-empty.
 - Feishu: close WebSocket connections on monitor stop/abort so ghost connections no longer persist, preventing duplicate event processing and resource leaks across restart cycles. (#52844) Thanks @schumilin.
 - Feishu: use the original message `create_time` instead of `Date.now()` for inbound timestamps so offline-retried messages carry the correct authoring time, preventing mis-targeted agent actions on stale instructions. (#52809) Thanks @schumilin.
 - Agents/sandbox: honor `tools.sandbox.tools.alsoAllow`, let explicit sandbox re-allows remove matching built-in default-deny tools, and keep sandbox explain/error guidance aligned with the effective sandbox tool policy. (#54492) Thanks @ngutman.

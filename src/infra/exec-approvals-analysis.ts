@@ -726,11 +726,42 @@ export function buildSafeBinsShellCommand(params: {
   return finalizeRebuiltShellCommand(rebuilt, params.segments.length);
 }
 
+function escapePowerShellSingleQuotedArg(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
+/**
+ * Windows gateway exec runs `pwsh -Command "<string>"`. Allowlist enforcement must emit a
+ * PowerShell-safe invocation; Unix `sh -c` single-quote rules do not apply (see
+ * `rebuildShellCommandFromSource`, which intentionally fails closed on win32).
+ *
+ * Today `analyzeWindowsShellCommand` only produces a single segment (no pipes/chains), so we
+ * rebuild as `& 'exe' 'arg1' ...` which matches that model.
+ */
+function buildEnforcedShellCommandWindows(segments: ExecCommandSegment[]): {
+  ok: boolean;
+  command?: string;
+  reason?: string;
+} {
+  if (segments.length !== 1) {
+    return { ok: false, reason: "unsupported platform" };
+  }
+  const argv = resolvePlannedSegmentArgv(segments[0]!);
+  if (!argv || argv.length === 0) {
+    return { ok: false, reason: "segment execution plan unavailable" };
+  }
+  const rendered = argv.map(escapePowerShellSingleQuotedArg).join(" ");
+  return { ok: true, command: `& ${rendered}` };
+}
+
 export function buildEnforcedShellCommand(params: {
   command: string;
   segments: ExecCommandSegment[];
   platform?: string | null;
 }): { ok: boolean; command?: string; reason?: string } {
+  if (isWindowsPlatform(params.platform)) {
+    return buildEnforcedShellCommandWindows(params.segments);
+  }
   const rebuilt = rebuildShellCommandFromSource({
     command: params.command,
     platform: params.platform,

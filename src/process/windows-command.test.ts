@@ -22,6 +22,26 @@ describe("resolveWindowsCommandShim", () => {
     ).toBe("pnpm.cmd");
   });
 
+  it("appends .cmd for gcloud on Windows", () => {
+    expect(
+      resolveWindowsCommandShim({
+        command: "gcloud",
+        cmdCommands: ["pnpm", "yarn", "gcloud"],
+        platform: "win32",
+      }),
+    ).toBe("gcloud.cmd");
+  });
+
+  it("leaves gog unchanged on Windows (gogcli ships gog.exe)", () => {
+    expect(
+      resolveWindowsCommandShim({
+        command: "gog",
+        cmdCommands: ["pnpm", "yarn", "gcloud"],
+        platform: "win32",
+      }),
+    ).toBe("gog");
+  });
+
   it("keeps explicit extensions on Windows", () => {
     expect(
       resolveWindowsCommandShim({

@@ -9,7 +9,7 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { hasBinary } from "../agents/skills.js";
 import type { OpenClawConfig } from "../config/config.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
-import { runCommandWithTimeout } from "../process/exec.js";
+import { resolveWindowsSpawnFileAndArgs, runCommandWithTimeout } from "../process/exec.js";
 import { ensureTailscaleEndpoint } from "./gmail-setup-utils.js";
 import { isAddressInUseError } from "./gmail-watcher-errors.js";
 import {
@@ -63,7 +63,8 @@ function spawnGogServe(cfg: GmailHookRuntimeConfig): ChildProcess {
   log.info(`starting gog ${args.join(" ")}`);
   let addressInUse = false;
 
-  const child = spawn("gog", args, {
+  const { file, args: spawnArgs } = resolveWindowsSpawnFileAndArgs(["gog", ...args]);
+  const child = spawn(file, spawnArgs, {
     stdio: ["ignore", "pipe", "pipe"],
     detached: false,
   });
@@ -157,6 +158,7 @@ export async function startGmailWatcher(cfg: OpenClawConfig): Promise<GmailWatch
         path: runtimeConfig.tailscale.path,
         port: runtimeConfig.serve.port,
         target: runtimeConfig.tailscale.target,
+        token: runtimeConfig.pushToken,
       });
       log.info(
         `tailscale ${runtimeConfig.tailscale.mode} configured for port ${runtimeConfig.serve.port}`,

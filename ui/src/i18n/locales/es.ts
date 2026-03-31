@@ -74,6 +74,17 @@ export const es: TranslationMap = {
       lastChannelsRefresh: "Última actualización de canales",
       channelsHint: "Usa Canales para vincular WhatsApp, Telegram, Discord, Signal o iMessage.",
     },
+    llmInsights: {
+      accessBlockTitle: "LLM Insights",
+      accessBlockSub:
+        "Página de informe del plugin. Se abre en una pestaña nueva (añade token solo si tu gateway lo exige).",
+      link: "LLM Insights",
+      openButton: "Abrir LLM Insights",
+      linkTitle: "Abrir LLM Insights en una pestaña nueva (usa tu token de gateway).",
+      openFailed: "No se pudo abrir LLM Insights: {message}",
+      needsAuth:
+        "Añade un token o contraseña de gateway arriba y conéctate para abrir LLM Insights.",
+    },
     stats: {
       instances: "Instancias",
       instancesHint: "Balizas de presencia en los últimos 5 minutos.",

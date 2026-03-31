@@ -9,7 +9,7 @@ import {
   validateConfigObjectWithPlugins,
   writeConfigFile,
 } from "../config/config.js";
-import { runCommandWithTimeout } from "../process/exec.js";
+import { resolveWindowsSpawnFileAndArgs, runCommandWithTimeout } from "../process/exec.js";
 import { defaultRuntime } from "../runtime.js";
 import { displayPath } from "../utils.js";
 import {
@@ -354,7 +354,8 @@ export async function runGmailService(opts: GmailRunOptions) {
 function spawnGogServe(cfg: GmailHookRuntimeConfig) {
   const args = buildGogWatchServeArgs(cfg);
   defaultRuntime.log(`Starting gog ${args.join(" ")}`);
-  return spawn("gog", args, { stdio: "inherit" });
+  const { file, args: spawnArgs } = resolveWindowsSpawnFileAndArgs(["gog", ...args]);
+  return spawn(file, spawnArgs, { stdio: "inherit" });
 }
 
 async function startGmailWatch(

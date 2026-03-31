@@ -18,6 +18,10 @@ import { sanitizeForPromptLiteral } from "./sanitize-for-prompt.js";
 export type PromptMode = "full" | "minimal" | "none";
 type OwnerIdDisplay = "raw" | "hash";
 
+function isWindowsOpenClawRuntime(os?: string | null): boolean {
+  return /windows/i.test(os?.trim() ?? "");
+}
+
 function buildSkillsSection(params: { skillsPrompt?: string; readToolName: string }) {
   const trimmed = params.skillsPrompt?.trim();
   if (!trimmed) {
@@ -452,6 +456,13 @@ export function buildAgentSystemPrompt(params: {
     "When exec returns approval-pending, include the concrete /approve command from tool output (with allow-once|allow-always|deny) and do not ask for a different or rotated code.",
     "Treat allow-once as single-command only: if another elevated command needs approval, request a fresh /approve and do not claim prior approval covered it.",
     "When approvals are required, preserve and show the full command/script exactly as provided (including chained operators like &&, ||, |, ;, or multiline shells) so the user can approve what will actually run.",
+    ...(availableTools.has("exec") && isWindowsOpenClawRuntime(runtimeInfo?.os)
+      ? [
+          "Windows / PowerShell exec: the gateway runs host commands via PowerShell (`pwsh` when installed, otherwise Windows PowerShell 5.1).",
+          "Do not put bash-style `cmd1 && cmd2` or `cmd1 || cmd2` chains in a single exec string on Windows: PowerShell 5.1 does not support `&&`/`||` the way bash does (PowerShell 7+ does, but 5.1 may be the shell).",
+          "Prefer one command per exec call. Only use `&&`/`||` in a single exec when you know the session is PowerShell 7+ (`pwsh`); otherwise use separate exec calls.",
+        ]
+      : []),
     "",
     ...safetySection,
     "## OpenClaw CLI Quick Reference",

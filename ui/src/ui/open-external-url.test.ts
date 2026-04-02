@@ -97,11 +97,7 @@ describe("openExternalUrlSafe", () => {
       baseHref: "https://openclaw.ai/chat",
     });
 
-    expect(openMock).toHaveBeenCalledWith(
-      "https://example.com/safe.png",
-      "_blank",
-      "noopener,noreferrer",
-    );
+    expect(openMock).toHaveBeenCalledWith("https://example.com/safe.png", "_blank");
     expect(opened).toBe(openedLikeProxy);
     expect(openedLikeProxy.opener).toBeNull();
   });

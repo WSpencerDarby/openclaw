@@ -9,6 +9,7 @@ import {
 } from "../gateway/model-pricing-cache.js";
 import {
   __resetUsageFormatCachesForTest,
+  coalesceUsageComponentsForPricing,
   estimateCostBreakdownFromUsageAndPricing,
   estimateUsageCost,
   formatTokenCount,
@@ -99,6 +100,30 @@ describe("usage-format", () => {
     expect(breakdown.inputCost).toBeCloseTo(1);
     expect(breakdown.outputCost).toBeCloseTo(1);
     expect(breakdown.totalCost).toBeCloseTo(2);
+  });
+
+  it("splits rollup-only token totals for pricing (local providers)", () => {
+    const cost = { input: 1, output: 3, cacheRead: 0, cacheWrite: 0 };
+    const breakdown = estimateCostBreakdownFromUsageAndPricing({
+      usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 2_000_000 },
+      cost,
+    });
+    // 1M input + 1M output after 50/50 split of 2M total.
+    expect(breakdown.inputCost).toBeCloseTo(1);
+    expect(breakdown.outputCost).toBeCloseTo(3);
+    expect(breakdown.totalCost).toBeCloseTo(4);
+  });
+
+  it("coalesceUsageComponentsForPricing leaves breakdown rows unchanged when present", () => {
+    expect(
+      coalesceUsageComponentsForPricing({
+        input: 100,
+        output: 50,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 999,
+      }),
+    ).toEqual({ input: 100, output: 50, cacheRead: 0, cacheWrite: 0 });
   });
 
   it("prefers models.usageCostOverrides over provider catalog", () => {

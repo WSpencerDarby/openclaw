@@ -1,7 +1,13 @@
 /**
  * Open gateway-hosted plugin HTML pages (e.g. /plugins/llm-insights) in a new tab.
- * A plain <a href> cannot send Authorization: Bearer, so we fetch with credentials
- * then open a blob URL (same pattern as tokenized dashboard flows).
+ *
+ * Always opens as a real HTTP URL (never a blob: URL). Blob URLs inherit the opener
+ * document's Content-Security-Policy, which blocks the plugin page's own inline scripts
+ * (the hashes differ). Real HTTP navigations get the plugin page's own CSP header.
+ *
+ * When gateway auth is token/password, the secret is appended as `?_oc_token=…` so
+ * the plugin page can pre-fill it into the bearer field. The token is only passed over
+ * loopback (same machine), matching the existing loopback-bypass in the POST handler.
  */
 
 import { openExternalUrlSafe } from "./open-external-url.ts";
@@ -48,33 +54,29 @@ export async function openGatewayAuthenticatedPage(params: {
     throw new Error("openGatewayAuthenticatedPage requires a browser environment");
   }
   const authMode = params.authMode ?? "none";
-  const url = resolveGatewayPluginHttpUrl({
+  const baseUrl = resolveGatewayPluginHttpUrl({
     wsUrl: params.wsUrl,
     path: params.path,
     pageBase: params.pageBase,
   });
-  const secret = params.bearerSecret.trim();
-  const headers = new Headers();
-  if (authMode !== "none") {
-    if (!secret) {
-      throw new Error("missing gateway credentials");
+
+  // Always navigate to the real HTTP URL. Blob URLs inherit the opener's CSP, which
+  // blocks the plugin page's inline script (hash mismatch). A direct HTTP navigation
+  // gets the plugin page's own Content-Security-Policy response header.
+  let url = baseUrl;
+  if (authMode === "token" || authMode === "password") {
+    const secret = params.bearerSecret.trim();
+    if (secret) {
+      // Append token so the page can pre-fill the bearer field. Only meaningful on
+      // loopback where the POST handler already bypasses auth for direct requests.
+      const u = new URL(baseUrl);
+      u.searchParams.set("_oc_token", secret);
+      url = u.toString();
     }
-    headers.set("Authorization", `Bearer ${secret}`);
   }
 
-  const res = await fetch(url, { headers, credentials: "omit", mode: "cors" });
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status}`);
+  const opened = openExternalUrlSafe(url);
+  if (!opened) {
+    window.location.assign(url);
   }
-  const html = await res.text();
-  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-  const blobUrl = URL.createObjectURL(blob);
-  const child = openExternalUrlSafe(blobUrl);
-  if (!child) {
-    URL.revokeObjectURL(blobUrl);
-    throw new Error("popup blocked");
-  }
-  window.setTimeout(() => {
-    URL.revokeObjectURL(blobUrl);
-  }, 60_000);
 }

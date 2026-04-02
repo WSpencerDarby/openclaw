@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { buildLlmInsightsPayload, type InsightParams } from "./llm-insights-core.js";
 import type { OpenClawPluginApi } from "../api.js";
@@ -44,6 +45,16 @@ function fmtCostUsdPerMTok(c?: {
     return "—";
   }
   return `${c.input} / ${c.output} / ${c.cacheRead} / ${c.cacheWrite}`;
+}
+
+/** Base URL for API calls and redirects when the page is shown in a blob tab (Control UI "open with auth"). */
+function resolveGatewayOrigin(req: IncomingMessage): string {
+  const host = req.headers.host?.trim() || "localhost";
+  const xfProto = req.headers["x-forwarded-proto"];
+  const firstProto =
+    typeof xfProto === "string" ? xfProto.split(",")[0]?.trim().toLowerCase() : "";
+  const proto = firstProto === "https" ? "https" : "http";
+  return `${proto}://${host}`;
 }
 
 export function createLlmInsightsHttpHandler(params: {
@@ -104,6 +115,8 @@ export function createLlmInsightsHttpHandler(params: {
       })
       .join("");
 
+    const gatewayOriginJson = JSON.stringify(resolveGatewayOrigin(req));
+
     const costPanelRows = data.modelCostRows
       .map((row) => {
         const o = row.override;
@@ -140,8 +153,8 @@ export function createLlmInsightsHttpHandler(params: {
   <p class="muted">Range: <strong>${escapeHtml(data.dateRange.startDate)}</strong> → <strong>${escapeHtml(data.dateRange.endDate)}</strong> · Models: <strong>${data.models.count}</strong> · Sessions in view: <strong>${data.sessionsUsage.sessionCount}</strong></p>
   <p class="muted">For interactive charts and filters, open the Control UI <strong>Usage</strong> tab (<code>/usage</code>) after <code>openclaw dashboard</code>.</p>
   <div class="kpis">
-    <div class="kpi">Total cost (est.)<br><strong>$${escapeHtml(data.costSummary.totals.totalCost.toFixed(4))}</strong></div>
-    <div class="kpi">Total tokens<br><strong>${escapeHtml(String(data.costSummary.totals.totalTokens))}</strong></div>
+    <div class="kpi">Total cost (est.)<br><strong>$${escapeHtml(data.sessionsUsage.totals.totalCost.toFixed(4))}</strong></div>
+    <div class="kpi">Total tokens<br><strong>${escapeHtml(String(data.sessionsUsage.totals.totalTokens))}</strong></div>
     <div class="kpi">Latency avg<br><strong>${lat ? `${Math.round(lat.avgMs)} ms` : "—"}</strong></div>
     <div class="kpi">Latency p95<br><strong>${lat ? `${Math.round(lat.p95Ms)} ms` : "—"}</strong></div>
   </div>
@@ -153,82 +166,132 @@ export function createLlmInsightsHttpHandler(params: {
   <h2>Top models by usage</h2>
   <table><thead><tr><th>Provider</th><th>Model</th><th>Turns</th><th>Est. cost</th><th>Latency avg (ms)</th><th>Latency p95 (ms)</th></tr></thead><tbody>${rows || "<tr><td colspan=6>No data</td></tr>"}</tbody></table>
   <h2>Provider quotas (where available)</h2>
+  <p class="muted">Figures come from each provider&rsquo;s usage or quota API when credentials are configured. They are not recomputed from manual <code>models.usageCostOverrides</code> (those apply to transcript-based estimates above).</p>
   <table><thead><tr><th>Provider</th><th>Plan</th><th>Usage / note</th></tr></thead><tbody>${provRows || "<tr><td colspan=3>No provider usage data</td></tr>"}</tbody></table>
   <h2>Query</h2>
   <p class="muted">Adjust <code>?days=</code>, <code>?limit=</code>, <code>?key=</code> (session key), <code>startDate=</code>/<code>endDate=</code> (YYYY-MM-DD).</p>
   <script>
 (function(){
+  var __OC_GATEWAY_ORIGIN__ = ${gatewayOriginJson};
+  function costOverridesPostUrl() {
+    return window.location.protocol === "blob:"
+      ? new URL("/plugins/llm-insights-cost-overrides", __OC_GATEWAY_ORIGIN__).href
+      : "/plugins/llm-insights-cost-overrides";
+  }
+  function llmInsightsPageUrl() {
+    var q = window.location.search || "";
+    return window.location.protocol === "blob:"
+      ? new URL("/plugins/llm-insights" + q, __OC_GATEWAY_ORIGIN__).href
+      : "/plugins/llm-insights" + q;
+  }
+  // Pre-fill bearer field from ?_oc_token= if present, then strip from URL.
+  (function() {
+    var params = new URLSearchParams(window.location.search);
+    var t = params.get("_oc_token");
+    if (t) {
+      var el = document.getElementById("gw-bearer");
+      if (el && "value" in el) { el.value = t; }
+      params.delete("_oc_token");
+      var qs = params.toString();
+      var clean = window.location.pathname + (qs ? "?" + qs : "");
+      window.history.replaceState(null, "", clean);
+    }
+  })();
   const btn = document.getElementById("llm-cost-save");
   const status = document.getElementById("llm-cost-status");
   const tokenEl = document.getElementById("gw-bearer");
   function setStatus(msg) { if (status) status.textContent = msg; }
   if (!btn) return;
-  btn.addEventListener("click", async function () {
-    const token = tokenEl && "value" in tokenEl ? String(tokenEl.value || "").trim() : "";
-    const rows = Array.prototype.slice.call(document.querySelectorAll("tr[data-cost-key]"));
-    const overrides = {};
-    const removeKeys = [];
-    for (let i = 0; i < rows.length; i++) {
-      const tr = rows[i];
-      const key = tr.getAttribute("data-cost-key");
+  btn.addEventListener("click", function () {
+    var token = tokenEl && "value" in tokenEl ? String(tokenEl.value || "").trim() : "";
+    var rows = Array.prototype.slice.call(document.querySelectorAll("tr[data-cost-key]"));
+    var overrides = {};
+    var removeKeys = [];
+    function readField(tr, field) {
+      var el = tr.querySelector('[data-field="' + field + '"]');
+      return el && "value" in el ? String(el.value).trim() : "";
+    }
+    for (var i = 0; i < rows.length; i++) {
+      var tr = rows[i];
+      var key = tr.getAttribute("data-cost-key");
       if (!key) continue;
-      const had = tr.getAttribute("data-had-override") === "1";
-      function val(field) {
-        const el = tr.querySelector('[data-field="' + field + '"]');
-        return el && "value" in el ? String(el.value).trim() : "";
-      }
-      const a = val("input");
-      const b = val("output");
-      const c = val("cacheRead");
-      const d = val("cacheWrite");
-      const allEmpty = !a && !b && !c && !d;
-      const allFilled = a && b && c && d;
+      var had = tr.getAttribute("data-had-override") === "1";
+      var a = readField(tr, "input");
+      var b = readField(tr, "output");
+      var c = readField(tr, "cacheRead");
+      var d = readField(tr, "cacheWrite");
+      var allEmpty = !a && !b && !c && !d;
+      var allFilled = a && b && c && d;
       if (allEmpty && had) {
         removeKeys.push(key);
       } else if (allFilled) {
-        const input = parseFloat(a);
-        const output = parseFloat(b);
-        const cacheRead = parseFloat(c);
-        const cacheWrite = parseFloat(d);
-        if (![input, output, cacheRead, cacheWrite].every(function (x) { return typeof x === "number" && isFinite(x); })) {
+        var inVal = parseFloat(a);
+        var outVal = parseFloat(b);
+        var crVal = parseFloat(c);
+        var cwVal = parseFloat(d);
+        if (![inVal, outVal, crVal, cwVal].every(function (x) { return typeof x === "number" && isFinite(x); })) {
           setStatus("Invalid numbers for " + key);
           return;
         }
-        overrides[key] = { input: input, output: output, cacheRead: cacheRead, cacheWrite: cacheWrite };
+        overrides[key] = { input: inVal, output: outVal, cacheRead: crVal, cacheWrite: cwVal };
       } else if (!allEmpty) {
         setStatus("Fill all four override fields for " + key + ", or clear all to remove.");
         return;
       }
     }
-    setStatus("Saving…");
-    try {
-      const headers = { "Content-Type": "application/json" };
-      if (token) {
-        headers["Authorization"] = "Bearer " + token;
-      }
-      const res = await fetch("/plugins/llm-insights-cost-overrides", {
-        method: "POST",
-        headers: headers,
-        body: JSON.stringify({ overrides: overrides, removeKeys: removeKeys })
+    setStatus("Saving\u2026");
+    fetch(costOverridesPostUrl(), {
+      method: "POST",
+      headers: Object.assign({ "Content-Type": "application/json" }, token ? { "Authorization": "Bearer " + token } : {}),
+      body: JSON.stringify({ overrides: overrides, removeKeys: removeKeys })
+    }).then(function (res) {
+      return res.text().then(function (text) {
+        if (!res.ok) {
+          var detail = text.slice(0, 400);
+          try {
+            var j = JSON.parse(text);
+            if (j && typeof j.error === "string") { detail = j.error; }
+            else if (j && j.error && typeof j.error === "object" && typeof j.error.message === "string") { detail = j.error.message; }
+          } catch (_) {}
+          setStatus("Error " + res.status + ": " + detail);
+          return;
+        }
+        setStatus("Saved. Refreshing\u2026");
+        window.location.href = llmInsightsPageUrl();
       });
-      const text = await res.text();
-      if (!res.ok) {
-        setStatus("Error " + res.status + ": " + text.slice(0, 200));
-        return;
-      }
-      setStatus("Saved. Refreshing…");
-      window.location.reload();
-    } catch (e) {
+    }).catch(function (e) {
       setStatus(String(e && e.message ? e.message : e));
-    }
+    });
   });
 })();
   <\/script>
 </body>
 </html>`;
 
+    // Compute the SHA-256 hash of the inline script so the CSP header we send
+    // explicitly allows it. This matters when the page is embedded or opened
+    // under a parent frame/document that has a restrictive CSP of its own.
+    const scriptMatch = /<script(?:\s[^>]*)?>([^]*?)<\/script>/i.exec(html);
+    const scriptContent = scriptMatch?.[1] ?? "";
+    const scriptHash = scriptContent
+      ? `'sha256-${createHash("sha256").update(scriptContent, "utf8").digest("base64")}'`
+      : null;
+    const scriptSrc = scriptHash
+      ? `script-src 'self' ${scriptHash}`
+      : "script-src 'self'";
+    const csp = [
+      "default-src 'self'",
+      "base-uri 'none'",
+      "object-src 'none'",
+      scriptSrc,
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data:",
+      "connect-src 'self' http: https: ws: wss:",
+    ].join("; ");
+
     res.statusCode = 200;
     res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Content-Security-Policy", csp);
     res.setHeader("Cache-Control", "no-store");
     res.end(html);
     return true;

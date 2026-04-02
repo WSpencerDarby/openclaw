@@ -408,6 +408,12 @@ importers:
         specifier: workspace:*
         version: link:../..
 
+  extensions/llm-insights:
+    dependencies:
+      '@sinclair/typebox':
+        specifier: 0.34.48
+        version: 0.34.48
+
   extensions/llm-task:
     dependencies:
       '@sinclair/typebox':

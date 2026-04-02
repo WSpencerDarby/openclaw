@@ -187,6 +187,37 @@ export function resolveModelCostConfig(params: {
 const toNumber = (value: number | undefined): number =>
   typeof value === "number" && Number.isFinite(value) ? value : 0;
 
+/**
+ * When usage only has a rollup token total (common for local/Ollama) and no
+ * input/output/cache breakdown, split the total 50/50 so per-million input and
+ * output rates from `models.usageCostOverrides` both contribute to estimates.
+ */
+export function coalesceUsageComponentsForPricing(totals: {
+  input?: number;
+  output?: number;
+  cacheRead?: number;
+  cacheWrite?: number;
+  /** Session aggregates use this field; transcript `usage.total` maps here when needed. */
+  totalTokens?: number;
+  /** NormalizedUsage-style rollup when components are absent. */
+  total?: number;
+}): { input: number; output: number; cacheRead: number; cacheWrite: number } {
+  const input = toNumber(totals.input);
+  const output = toNumber(totals.output);
+  const cacheRead = toNumber(totals.cacheRead);
+  const cacheWrite = toNumber(totals.cacheWrite);
+  const partsSum = input + output + cacheRead + cacheWrite;
+  if (partsSum > 0) {
+    return { input, output, cacheRead, cacheWrite };
+  }
+  const rollup = toNumber(totals.totalTokens) || toNumber(totals.total);
+  if (rollup <= 0) {
+    return { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  }
+  const half = rollup / 2;
+  return { input: half, output: half, cacheRead: 0, cacheWrite: 0 };
+}
+
 export function estimateUsageCost(params: {
   usage?: NormalizedUsage | UsageTotals | null;
   cost?: ModelCostConfig;
@@ -196,15 +227,20 @@ export function estimateUsageCost(params: {
   if (!usage || !cost) {
     return undefined;
   }
-  const input = toNumber(usage.input);
-  const output = toNumber(usage.output);
-  const cacheRead = toNumber(usage.cacheRead);
-  const cacheWrite = toNumber(usage.cacheWrite);
+  const rollup = usage as NormalizedUsage & { totalTokens?: number };
+  const coalesced = coalesceUsageComponentsForPricing({
+    input: usage.input,
+    output: usage.output,
+    cacheRead: usage.cacheRead,
+    cacheWrite: usage.cacheWrite,
+    totalTokens: rollup.totalTokens,
+    total: usage.total,
+  });
   const total =
-    input * cost.input +
-    output * cost.output +
-    cacheRead * cost.cacheRead +
-    cacheWrite * cost.cacheWrite;
+    coalesced.input * cost.input +
+    coalesced.output * cost.output +
+    coalesced.cacheRead * cost.cacheRead +
+    coalesced.cacheWrite * cost.cacheWrite;
   if (!Number.isFinite(total)) {
     return undefined;
   }
@@ -216,7 +252,9 @@ export function estimateUsageCost(params: {
  * Used to refresh session aggregates when pricing (including `models.usageCostOverrides`) changes.
  */
 export function estimateCostBreakdownFromUsageAndPricing(params: {
-  usage: Pick<UsageTotals, "input" | "output" | "cacheRead" | "cacheWrite">;
+  usage: Pick<UsageTotals, "input" | "output" | "cacheRead" | "cacheWrite" | "total"> & {
+    totalTokens?: number;
+  };
   cost: ModelCostConfig;
 }): {
   totalCost: number;
@@ -225,10 +263,7 @@ export function estimateCostBreakdownFromUsageAndPricing(params: {
   cacheReadCost: number;
   cacheWriteCost: number;
 } {
-  const input = toNumber(params.usage.input);
-  const output = toNumber(params.usage.output);
-  const cacheRead = toNumber(params.usage.cacheRead);
-  const cacheWrite = toNumber(params.usage.cacheWrite);
+  const { input, output, cacheRead, cacheWrite } = coalesceUsageComponentsForPricing(params.usage);
   const cost = params.cost;
   const inputCost = (input / 1_000_000) * cost.input;
   const outputCost = (output / 1_000_000) * cost.output;

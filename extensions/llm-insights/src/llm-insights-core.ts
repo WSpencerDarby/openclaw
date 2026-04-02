@@ -113,7 +113,7 @@ export async function buildLlmInsightsPayload(
 
   const [costSummary, providerUsage, sessionsReport] = await Promise.all([
     loadCostUsageSummary({ startMs, endMs, config: cfg }),
-    loadProviderUsageSummary(),
+    loadProviderUsageSummary({ config: cfg }),
     buildSessionsUsageReport({
       config: cfg,
       startMs,

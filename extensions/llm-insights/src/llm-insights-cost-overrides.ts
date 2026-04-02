@@ -10,6 +10,24 @@ import type { OpenClawPluginApi } from "../api.js";
 
 const MAX_BODY_BYTES = 256_000;
 
+/**
+ * Browser plugin pages opened from the Control UI load as `blob:` URLs, so POSTs to the
+ * gateway are cross-origin and send a CORS preflight (OPTIONS). Without these headers the
+ * save request never runs. Echo `Origin` (including the string `null` for opaque/blob origins).
+ */
+function setCostOverridesCorsHeaders(req: IncomingMessage, res: ServerResponse): void {
+  const origin = req.headers.origin;
+  if (typeof origin === "string" && origin.length > 0) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+  } else {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+  }
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Max-Age", "86400");
+}
+
 type CostOverridesBody = {
   overrides?: Record<
     string,
@@ -18,8 +36,17 @@ type CostOverridesBody = {
   removeKeys?: string[];
 };
 
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value);
+function coerceFiniteNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim() !== "") {
+    const n = Number(value.trim());
+    if (Number.isFinite(n)) {
+      return n;
+    }
+  }
+  return undefined;
 }
 
 function isCostEntry(
@@ -30,16 +57,20 @@ function isCostEntry(
   }
   const v = value as Record<string, unknown>;
   return (
-    isFiniteNumber(v.input) &&
-    isFiniteNumber(v.output) &&
-    isFiniteNumber(v.cacheRead) &&
-    isFiniteNumber(v.cacheWrite)
+    coerceFiniteNumber(v.input) !== undefined &&
+    coerceFiniteNumber(v.output) !== undefined &&
+    coerceFiniteNumber(v.cacheRead) !== undefined &&
+    coerceFiniteNumber(v.cacheWrite) !== undefined
   );
 }
 
 function parseCostOverridesBody(raw: string): CostOverridesBody | null {
   try {
-    const parsed = JSON.parse(raw) as unknown;
+    const trimmed = raw.trim();
+    if (trimmed === "") {
+      return {};
+    }
+    const parsed = JSON.parse(trimmed) as unknown;
     if (!parsed || typeof parsed !== "object") {
       return null;
     }
@@ -54,11 +85,12 @@ function parseCostOverridesBody(raw: string): CostOverridesBody | null {
         if (!k.trim() || !isCostEntry(v)) {
           return null;
         }
+        const rec = v as Record<string, unknown>;
         overrides[k] = {
-          input: v.input,
-          output: v.output,
-          cacheRead: v.cacheRead,
-          cacheWrite: v.cacheWrite,
+          input: coerceFiniteNumber(rec.input)!,
+          output: coerceFiniteNumber(rec.output)!,
+          cacheRead: coerceFiniteNumber(rec.cacheRead)!,
+          cacheWrite: coerceFiniteNumber(rec.cacheWrite)!,
         };
       }
       out.overrides = overrides;
@@ -137,13 +169,25 @@ async function readRequestBody(req: IncomingMessage, maxBytes: number): Promise<
 
 export function createLlmInsightsCostOverridesPostHandler(api: OpenClawPluginApi) {
   return async (req: IncomingMessage, res: ServerResponse): Promise<boolean> => {
-    if (req.method !== "POST") {
+    const method = (req.method ?? "GET").toUpperCase();
+
+    if (method === "OPTIONS") {
+      setCostOverridesCorsHeaders(req, res);
+      res.statusCode = 204;
+      res.end();
+      return true;
+    }
+
+    if (method !== "POST") {
+      setCostOverridesCorsHeaders(req, res);
       res.statusCode = 405;
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
-      res.setHeader("Allow", "POST");
+      res.setHeader("Allow", "POST, OPTIONS");
       res.end("Method Not Allowed");
       return true;
     }
+
+    setCostOverridesCorsHeaders(req, res);
 
     if (!(await assertCostOverrideWriteAllowed(api, req, res))) {
       return true;

@@ -65,7 +65,10 @@ export function openExternalUrlSafe(
     return null;
   }
 
-  const opened = window.open(safeUrl, "_blank", "noopener,noreferrer");
+  // Do not pass `noopener` in the feature string: Chromium may return `null` from
+  // `window.open` when noopener is set, which breaks flows that need the returned Window
+  // (e.g. plugin pages opened after an async fetch). Clear `opener` manually instead.
+  const opened = window.open(safeUrl, "_blank");
   if (opened) {
     opened.opener = null;
   }

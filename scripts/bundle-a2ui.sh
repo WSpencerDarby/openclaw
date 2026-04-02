@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Prefer `pnpm canvas:a2ui:bundle` (runs via scripts/bundle-a2ui-runner.mjs) so Git Bash inherits
+# the same Node directory as the parent pnpm process.
+
 on_error() {
   echo "A2UI bundling failed. Re-run with: pnpm canvas:a2ui:bundle" >&2
   echo "If this persists, verify pnpm deps and try again." >&2

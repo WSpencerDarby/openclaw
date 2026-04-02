@@ -462,6 +462,33 @@ export async function buildSessionsUsageReport(params: {
     };
   }
 
+  // Session-level `aggregateTotals` sums historical per-message costs from transcripts before
+  // per-model recompute. Sum recomputed model costs so `result.totals.totalCost` matches the
+  // "by model" table and `models.usageCostOverrides` / catalog pricing.
+  if (byModelMap.size > 0) {
+    let totalCost = 0;
+    let inputCost = 0;
+    let outputCost = 0;
+    let cacheReadCost = 0;
+    let cacheWriteCost = 0;
+    let missingCostEntries = 0;
+    for (const row of byModelMap.values()) {
+      const t = row.totals;
+      totalCost += t.totalCost ?? 0;
+      inputCost += t.inputCost ?? 0;
+      outputCost += t.outputCost ?? 0;
+      cacheReadCost += t.cacheReadCost ?? 0;
+      cacheWriteCost += t.cacheWriteCost ?? 0;
+      missingCostEntries += t.missingCostEntries ?? 0;
+    }
+    aggregateTotals.totalCost = totalCost;
+    aggregateTotals.inputCost = inputCost;
+    aggregateTotals.outputCost = outputCost;
+    aggregateTotals.cacheReadCost = cacheReadCost;
+    aggregateTotals.cacheWriteCost = cacheWriteCost;
+    aggregateTotals.missingCostEntries = missingCostEntries;
+  }
+
   const byProviderRebuilt = new Map<string, SessionModelUsage>();
   for (const row of byModelMap.values()) {
     const providerKey = row.provider ?? "unknown";
